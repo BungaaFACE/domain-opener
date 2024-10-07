@@ -41,11 +41,11 @@ stages:
 
 .open_nginx_domain: &open_nginx_domain
     - echo "CREATING PROXY IF NOT EXISTS"
-    - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python NPMHelper.py --domain $DOMAIN --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
+    - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python /data/NginxProxyManagerHelper/NPMHelper.py --domain $DOMAIN --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
     
 .close_nginx_domain: &close_nginx_domain
     - echo "DELETING PROXY"
-    - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python NPMHelper.py -dl --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
+    - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python /data/NginxProxyManagerHelper/NPMHelper.py -dl --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
 
 
 prepare_ssh:
