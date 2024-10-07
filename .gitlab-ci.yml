@@ -14,8 +14,10 @@ stages:
 
 .ssh_prepare: &ssh_prepare
     - mkdir -p ~/.ssh && touch ~/.ssh/known_hosts
-    - ssh-keygen -R $GATE_IP && ssh-keyscan $GATE_IP >> ~/.ssh/known_hosts
-    - ssh-keygen -R $NPM_HELPER_IP && ssh-keyscan $NPM_HELPER_IP >> ~/.ssh/known_hosts
+    - ssh-keygen -R $GATE_IP
+    - ssh-keyscan $GATE_IP >> ~/.ssh/known_hosts
+    - ssh-keygen -R $NPM_HELPER_IP
+    - ssh-keyscan $NPM_HELPER_IP >> ~/.ssh/known_hosts
     - eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_rsa
 
 .ufw_reload: &ufw_reload
