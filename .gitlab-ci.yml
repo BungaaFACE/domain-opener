@@ -1,5 +1,6 @@
 variables:
   GATE_USER: "root"
+  GATE_PORT: "22"
   NPM_HELPER_USER: "root"
   NPM_HELPER_IP: "172.0.0.106"
   # Specify in variables:
@@ -29,13 +30,13 @@ stages:
 
 .white_ufw_open: &white_ufw_open
     - echo "OPENING UFW PORT"
-    - ssh $GATE_USER@$GATE_IP "sudo ufw allow $FORWARD_PORT"
-    - ssh $GATE_USER@$GATE_IP "sudo ufw allow out $FORWARD_PORT"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow $FORWARD_PORT"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow out $FORWARD_PORT"
     
 .white_ufw_close: &white_ufw_close
     - echo "OPENING UFW PORT"
-    - ssh $GATE_USER@$GATE_IP "sudo ufw delete allow $FORWARD_PORT"
-    - ssh $GATE_USER@$GATE_IP "sudo ufw delete allow out $FORWARD_PORT"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw delete allow $FORWARD_PORT"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw delete allow out $FORWARD_PORT"
 
 
 .open_nginx_domain: &open_nginx_domain
