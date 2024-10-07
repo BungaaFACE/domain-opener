@@ -45,7 +45,7 @@ stages:
     - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python NPMHelper.py -dl --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
 
 
-open_ufw_port:
+prepare_ssh:
   stage: prepare_ssh
   tags:
     - ct_shell
