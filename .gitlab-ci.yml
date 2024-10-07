@@ -12,7 +12,7 @@ stages:
   - nginx_proxy
 
 
-.ufw_reload: &white_ufw_open
+.ufw_reload: &ufw_reload
     - echo "RELOADING UFW"
     - ssh $GATE_USER@$GATE_IP "sudo systemctl stop ufw"
     - ssh $GATE_USER@$GATE_IP "sudo systemctl start ufw"
@@ -67,7 +67,7 @@ open_nginx:
   tags:
     - ct_shell
   script:
-    - *update_script
+    - *open_nginx_domain
   allow_failure: false
   needs: []
   when: manual
@@ -77,7 +77,7 @@ close_nginx:
   tags:
     - ct_shell
   script:
-    - *update_script
+    - *close_nginx_domain
   allow_failure: false
   needs: []
   when: manual
