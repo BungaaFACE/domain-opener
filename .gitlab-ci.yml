@@ -23,8 +23,8 @@ stages:
 
 .ufw_reload: &ufw_reload
     - echo "RELOADING UFW"
-    - ssh $GATE_USER@$GATE_IP "sudo systemctl stop ufw"
-    - ssh $GATE_USER@$GATE_IP "sudo systemctl start ufw"
+    # - ssh $GATE_USER@$GATE_IP "sudo systemctl stop ufw"
+    # - ssh $GATE_USER@$GATE_IP "sudo systemctl start ufw"
     - ssh $GATE_USER@$GATE_IP "sudo ufw reload"
 
 
