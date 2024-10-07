@@ -8,9 +8,14 @@ variables:
   # FORWARD_HOST, FORWARD_PORT - routing address for domain
 
 stages:
+  - prepare_ssh
   - white_ufw
   - nginx_proxy
 
+.ssh_prepare: &ssh_prepare
+    - mkdir -p ~/.ssh && touch ~/.ssh/known_hosts
+    - ssh-keygen -R $REMOTE_SERVER && ssh-keyscan $REMOTE_SERVER >> ~/.ssh/known_hosts
+    - eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_rsa
 
 .ufw_reload: &ufw_reload
     - echo "RELOADING UFW"
@@ -37,6 +42,17 @@ stages:
 .close_nginx_domain: &close_nginx_domain
     - echo "DELETING PROXY"
     - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python NPMHelper.py -dl --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
+
+
+open_ufw_port:
+  stage: prepare_ssh
+  tags:
+    - ct_shell
+  script:
+    - *ssh_prepare
+  allow_failure: false
+  needs: []
+  when: manual
 
 open_ufw_port:
   stage: white_ufw
