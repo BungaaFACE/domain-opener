@@ -1,0 +1,2 @@
+# Domain Opener
+This pipeline created to automatically open ufw port on VPS with white ip and adding proxy routing throigh Nginx Proxy Manager (using [NMPHelper](https://github.com/BungaaFACE/NginxProxyManagerHelper)). Also this pipeline let's you to do reverse actions - delete ufw allow port and deletes proxy.

@@ -1,0 +1,83 @@
+variables:
+  GATE_USER: "root"
+  NPM_HELPER_USER: "root"
+  NPM_HELPER_IP: "172.0.0.106"
+  # Specify in variables:
+  # GATE_IP - ip of vps with white ip and ufw
+  # DOMAIN - domain to be routed
+  # FORWARD_HOST, FORWARD_PORT - routing address for domain
+
+stages:
+  - white_ufw
+  - nginx_proxy
+
+
+.ufw_reload: &white_ufw_open
+    - echo "RELOADING UFW"
+    - ssh $GATE_USER@$GATE_IP "sudo systemctl stop ufw"
+    - ssh $GATE_USER@$GATE_IP "sudo systemctl start ufw"
+    - ssh $GATE_USER@$GATE_IP "sudo ufw reload"
+
+
+.white_ufw_open: &white_ufw_open
+    - echo "OPENING UFW PORT"
+    - ssh $GATE_USER@$GATE_IP "sudo ufw allow $FORWARD_PORT"
+    - ssh $GATE_USER@$GATE_IP "sudo ufw allow out $FORWARD_PORT"
+    
+.white_ufw_close: &white_ufw_close
+    - echo "OPENING UFW PORT"
+    - ssh $GATE_USER@$GATE_IP "sudo ufw delete allow $FORWARD_PORT"
+    - ssh $GATE_USER@$GATE_IP "sudo ufw delete allow out $FORWARD_PORT"
+
+
+.open_nginx_domain: &open_nginx_domain
+    - echo "CREATING PROXY IF NOT EXISTS"
+    - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python NPMHelper.py --domain $DOMAIN --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
+    
+.close_nginx_domain: &close_nginx_domain
+    - echo "DELETING PROXY"
+    - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python NPMHelper.py -dl --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
+
+open_ufw_port:
+  stage: white_ufw
+  tags:
+    - ct_shell
+  script:
+    - *white_ufw_open
+  after_script:
+    - *ufw_reload
+  allow_failure: true
+  needs: []
+  when: manual
+
+close_ufw_port:
+  stage: white_ufw
+  tags:
+    - ct_shell
+  script:
+    - *white_ufw_close
+  after_script:
+    - *ufw_reload
+  allow_failure: true
+  needs: []
+  when: manual
+
+open_nginx:
+  stage: nginx_proxy
+  tags:
+    - ct_shell
+  script:
+    - *update_script
+  allow_failure: false
+  needs: []
+  when: manual
+
+close_nginx:
+  stage: nginx_proxy
+  tags:
+    - ct_shell
+  script:
+    - *update_script
+  allow_failure: false
+  needs: []
+  when: manual
