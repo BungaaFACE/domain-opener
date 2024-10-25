@@ -1,45 +1,106 @@
 variables:
+  # GATE - VPS WITH PUBLIC ADDRESS
   GATE_USER: "root"
   GATE_PORT: "22"
-  NPM_HELPER_USER: "root"
-  NPM_HELPER_IP: "172.0.0.106"
+  GATE_PUBLIC_INTERFACE: "ens3"
+	GATE_VPN_INTERFACE: "ztzvtdexr7"
+  # NPM - NGINX PROXY MANAGER - INPUT POINT IN YOUR SERVERS
+  NPM_HELPER_USER: "root" # USER OF VM WITH NGINX PROXY MANAGER
+  NPM_HELPER_IP: "172.0.0.106" # IP OF VM WITH NGINX PROXY MANAGER (MUST BE AVAILABLE FROM RUNNER VM)
+  NPM_VPN_IP: "10.0.0.2" # VPN INTERFACE IP OF NGINX PROXY MANAGER
+
+	VPN_NETWORK: "10.0.0.0/24" # VPN NETWORK
+
+	# INITIAL SETUP VARIABLES
   # Specify in variables:
   # GATE_IP - ip of vps with white ip and ufw
   # DOMAIN - domain to be routed
   # FORWARD_HOST, FORWARD_PORT - routing address for domain
 
+
+
+
 stages:
   - prepare_ssh
-  - white_ufw
+  - initial_gate_setup
+  - gate_ufw
+  - port_forwarding
   - nginx_proxy
 
 .ssh_prepare: &ssh_prepare
-    - mkdir -p ~/.ssh && touch ~/.ssh/known_hosts
-    - ssh-keygen -R [$NPM_HELPER_IP]:$GATE_PORT
-    - ssh-keyscan -p $GATE_PORT $GATE_IP >> ~/.ssh/known_hosts
-    - ssh-keygen -R $NPM_HELPER_IP
-    - ssh-keyscan $NPM_HELPER_IP >> ~/.ssh/known_hosts
-    - eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_rsa
+    - echo "MAKE SURE TO SSH-COPY-ID PUB KEY TO GATE"
+		- mkdir -p ~/.ssh && touch ~/.ssh/known_hosts
+		- ssh-keygen -R [$NPM_HELPER_IP]:$GATE_PORT
+		- ssh-keyscan -p $GATE_PORT $GATE_IP >> ~/.ssh/known_hosts
+		- ssh-keygen -R $NPM_HELPER_IP
+		- ssh-keyscan $NPM_HELPER_IP >> ~/.ssh/known_hosts
+		- eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_rsa
+
+.init_gate_setup: &init_gate_setup
+    - echo "MAKE SURE TO CHANGE DEFAULT SSH PORT TO NOT_DEFAULT"
+    - echo "OPENING SSH UFW PORT"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow $GATE_PORT"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow out $GATE_PORT"
+    - echo "OPENING HTTP/HTTPS UFW PORT"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow 80"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow out 80"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow 443"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow out 443"
+    - echo "ALLOWING TRANSPARENT PRIVATE NETWORK UFW"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow in on $GATE_VPN_INTERFACE from $VPN_NETWORK to $VPN_NETWORK"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow out on $GATE_VPN_INTERFACE from $VPN_NETWORK to $VPN_NETWORK"
+    - echo "ENABLING PORT FORWARDING"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i 's/#net\/ipv4\/ip_forward=1/net\/ipv4\/ip_forward=1/g' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i 's/DEFAULT_FORWARD_POLICY=\"DROP\"/DEFAULT_FORWARD_POLICY=\"ACCEPT\"/g' /etc/default/ufw"
+    - echo "ADDING FORWARDING RULES"
+    - |
+        /etc/ufw/before.rules << EOD
+        *filter
+        # FILTER FORWARDING RULES
+        -A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport 80 -o $GATE_PUBLIC_INTERFACE -j ACCEPT
+        -A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport 443 -o $GATE_PUBLIC_INTERFACE -j ACCEPT
+        COMMIT
+        *nat
+        :PREROUTING ACCEPT [0:0]
+        # NAT FORWARDING RULES
+        -A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport 80 -j DNAT --to-destination $NPM_VPN_IP:80
+        -A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport 443 -j DNAT --to-destination $NPM_VPN_IP:443
+        -A POSTROUTING -o $GATE_PUBLIC_INTERFACE -j MASQUERADE
+        COMMIT
+        EOD
+
+
 
 .ufw_reload: &ufw_reload
     - echo "RELOADING UFW"
-    # - ssh $GATE_USER@$GATE_IP "sudo systemctl stop ufw"
-    # - ssh $GATE_USER@$GATE_IP "sudo systemctl start ufw"
+    - ssh $GATE_USER@$GATE_IP "sudo systemctl restart ufw"
     - ssh $GATE_USER@$GATE_IP "sudo ufw reload"
 
 
-.white_ufw_open: &white_ufw_open
+.gate_ufw_open: &gate_ufw_open
     - echo "OPENING UFW PORT"
     - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow $FORWARD_PORT"
     - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow out $FORWARD_PORT"
     
-.white_ufw_close: &white_ufw_close
+.gate_ufw_close: &gate_ufw_close
     - echo "OPENING UFW PORT"
     - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw delete allow $FORWARD_PORT"
     - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw delete allow out $FORWARD_PORT"
 
 
+.gate_port_forwarding_enable: &gate_port_forwarding_enable
+    - echo "ADDING FORWARDING RULES"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/# FILTER FORWARDING RULES/a -A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport $FORWARD_PORT -o $GATE_PUBLIC_INTERFACE -j ACCEPT' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/# NAT FORWARDING RULES/a -A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:FORWARD_PORT' /etc/ufw/sysctl.conf"
+
+.gate_port_forwarding_disable: &gate_port_forwarding_disable
+    - echo "REMOVING FORWARDING RULES"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/-A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport $FORWARD_PORT -o $GATE_PUBLIC_INTERFACE -j ACCEPT/d' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/-A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:$FORWARD_PORT/d' /etc/ufw/sysctl.conf"
+
+
 .open_nginx_domain: &open_nginx_domain
+    - echo "DONT FORGET TO ADD A-TYPE RECORD TO DNS (domain.com -> ip)"
     - echo "CREATING PROXY IF NOT EXISTS"
     - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python /data/NginxProxyManagerHelper/NPMHelper.py --domain $DOMAIN --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
     
@@ -48,7 +109,16 @@ stages:
     - ssh $NPM_HELPER_USER@$NPM_HELPER_IP "/data/NginxProxyManagerHelper/.venv/bin/python /data/NginxProxyManagerHelper/NPMHelper.py -dl --forward_host $FORWARD_HOST --forward_port $FORWARD_PORT"
 
 
-prepare_ssh:
+.open_nginx_stream: &open_nginx_stream
+    - echo "DONT FORGET TO ADD SRV-TYPE RECORD TO DNS (_service._tcp.domain.com -> domain.com and port)"
+    - echo "DONT FORGET TO ADD A-TYPE RECORD TO DNS (domain.com -> ip)"
+    - echo "TODO"
+
+.close_nginx_stream: &close_nginx_stream
+    - echo "TODO"
+
+
+prepare_ssh_job:
   stage: prepare_ssh
   tags:
     - ct_shell
@@ -58,31 +128,67 @@ prepare_ssh:
   needs: []
   when: manual
 
-open_ufw_port:
-  stage: white_ufw
+initiasl_gate_setup_job:
+  stage: initial_gate_setup
   tags:
     - ct_shell
   script:
-    - *white_ufw_open
+    - *init_gate_setup
+  after_script:
+    - *ufw_reload
+  allow_failure: false
+  needs: []
+  when: manual
+
+open_ufw_port_job:
+  stage: gate_ufw
+  tags:
+    - ct_shell
+  script:
+    - *gate_ufw_open
   after_script:
     - *ufw_reload
   allow_failure: true
   needs: []
   when: manual
 
-close_ufw_port:
-  stage: white_ufw
+close_ufw_port_job:
+  stage: gate_ufw
   tags:
     - ct_shell
   script:
-    - *white_ufw_close
+    - *gate_ufw_close
   after_script:
     - *ufw_reload
   allow_failure: true
   needs: []
   when: manual
 
-open_nginx:
+enable_port_forward_job:
+  stage: port_forwarding
+  tags:
+    - ct_shell
+  script:
+    - *gate_port_forwarding_enable
+  after_script:
+    - *ufw_reload
+  allow_failure: true
+  needs: []
+  when: manual
+
+disable_port_forward_job:
+  stage: port_forwarding
+  tags:
+    - ct_shell
+  script:
+    - *gate_port_forwarding_disable
+  after_script:
+    - *ufw_reload
+  allow_failure: true
+  needs: []
+  when: manual
+
+open_nginx_domain_job:
   stage: nginx_proxy
   tags:
     - ct_shell
@@ -92,12 +198,32 @@ open_nginx:
   needs: []
   when: manual
 
-close_nginx:
+close_nginx_domain_job:
   stage: nginx_proxy
   tags:
     - ct_shell
   script:
     - *close_nginx_domain
+  allow_failure: false
+  needs: []
+  when: manual
+
+open_nginx_stream_job:
+  stage: nginx_proxy
+  tags:
+    - ct_shell
+  script:
+    - *open_nginx_stream
+  allow_failure: false
+  needs: []
+  when: manual
+
+close_nginx_stream_job:
+  stage: nginx_proxy
+  tags:
+    - ct_shell
+  script:
+    - *close_nginx_stream
   allow_failure: false
   needs: []
   when: manual
