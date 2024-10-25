@@ -3,13 +3,13 @@ variables:
   GATE_USER: "root"
   GATE_PORT: "22"
   GATE_PUBLIC_INTERFACE: "ens3"
-	GATE_VPN_INTERFACE: "ztzvtdexr7"
+  GATE_VPN_INTERFACE: "ztzvtdexr7"
   # NPM - NGINX PROXY MANAGER - INPUT POINT IN YOUR SERVERS
   NPM_HELPER_USER: "root" # USER OF VM WITH NGINX PROXY MANAGER
   NPM_HELPER_IP: "172.0.0.106" # IP OF VM WITH NGINX PROXY MANAGER (MUST BE AVAILABLE FROM RUNNER VM)
   NPM_VPN_IP: "10.0.0.2" # VPN INTERFACE IP OF NGINX PROXY MANAGER
 
-	VPN_NETWORK: "10.0.0.0/24" # VPN NETWORK
+  VPN_NETWORK: "10.0.0.0/24" # VPN NETWORK
 
 	# INITIAL SETUP VARIABLES
   # Specify in variables:
@@ -29,12 +29,12 @@ stages:
 
 .ssh_prepare: &ssh_prepare
     - echo "MAKE SURE TO SSH-COPY-ID PUB KEY TO GATE"
-		- mkdir -p ~/.ssh && touch ~/.ssh/known_hosts
-		- ssh-keygen -R [$NPM_HELPER_IP]:$GATE_PORT
-		- ssh-keyscan -p $GATE_PORT $GATE_IP >> ~/.ssh/known_hosts
-		- ssh-keygen -R $NPM_HELPER_IP
-		- ssh-keyscan $NPM_HELPER_IP >> ~/.ssh/known_hosts
-		- eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_rsa
+    - mkdir -p ~/.ssh && touch ~/.ssh/known_hosts
+    - ssh-keygen -R [$NPM_HELPER_IP]:$GATE_PORT
+    - ssh-keyscan -p $GATE_PORT $GATE_IP >> ~/.ssh/known_hosts
+    - ssh-keygen -R $NPM_HELPER_IP
+    - ssh-keyscan $NPM_HELPER_IP >> ~/.ssh/known_hosts
+    - eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_rsa
 
 .init_gate_setup: &init_gate_setup
     - echo "MAKE SURE TO CHANGE DEFAULT SSH PORT TO NOT_DEFAULT"
