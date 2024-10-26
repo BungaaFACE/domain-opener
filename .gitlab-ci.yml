@@ -50,11 +50,11 @@ stages:
     - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow in on $GATE_VPN_INTERFACE from $VPN_NETWORK to $VPN_NETWORK"
     - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw allow out on $GATE_VPN_INTERFACE from $VPN_NETWORK to $VPN_NETWORK"
     - echo "ENABLING PORT FORWARDING"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i 's/#net\/ipv4\/ip_forward=1/net\/ipv4\/ip_forward=1/g' /etc/ufw/sysctl.conf"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i 's/DEFAULT_FORWARD_POLICY=\"DROP\"/DEFAULT_FORWARD_POLICY=\"ACCEPT\"/g' /etc/default/ufw"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i 's/#net\/ipv4\/ip_forward=1/net\/ipv4\/ip_forward=1/g' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i 's/DEFAULT_FORWARD_POLICY=\"DROP\"/DEFAULT_FORWARD_POLICY=\"ACCEPT\"/g' /etc/default/ufw"
     - echo "ADDING FORWARDING RULES"
     - |
-        /etc/ufw/before.rules << EOD
+        sudo tee -a /etc/ufw/before.rules > /dev/null << EOD
         *filter
         # FILTER FORWARDING RULES
         -A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport 80 -o $GATE_PUBLIC_INTERFACE -j ACCEPT
@@ -90,13 +90,13 @@ stages:
 
 .gate_port_forwarding_enable: &gate_port_forwarding_enable
     - echo "ADDING FORWARDING RULES"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/# FILTER FORWARDING RULES/a -A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport $FORWARD_PORT -o $GATE_PUBLIC_INTERFACE -j ACCEPT' /etc/ufw/sysctl.conf"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/# NAT FORWARDING RULES/a -A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:FORWARD_PORT' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i '/# FILTER FORWARDING RULES/a -A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport $FORWARD_PORT -o $GATE_PUBLIC_INTERFACE -j ACCEPT' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i '/# NAT FORWARDING RULES/a -A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:FORWARD_PORT' /etc/ufw/sysctl.conf"
 
 .gate_port_forwarding_disable: &gate_port_forwarding_disable
     - echo "REMOVING FORWARDING RULES"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/-A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport $FORWARD_PORT -o $GATE_PUBLIC_INTERFACE -j ACCEPT/d' /etc/ufw/sysctl.conf"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sed -i '/-A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:$FORWARD_PORT/d' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i '/-A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport $FORWARD_PORT -o $GATE_PUBLIC_INTERFACE -j ACCEPT/d' /etc/ufw/sysctl.conf"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i '/-A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:$FORWARD_PORT/d' /etc/ufw/sysctl.conf"
 
 
 .open_nginx_domain: &open_nginx_domain
@@ -128,7 +128,7 @@ prepare_ssh_job:
   needs: []
   when: manual
 
-initiasl_gate_setup_job:
+initial_gate_setup_job:
   stage: initial_gate_setup
   tags:
     - ct_shell
