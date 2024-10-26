@@ -70,7 +70,7 @@ stages:
         -A POSTROUTING -o $GATE_PUBLIC_INTERFACE -j MASQUERADE
         COMMIT
         EOF
-    - cat /etc/ufw/before.rules
+    - sudo cat /etc/ufw/before.rules
 
 
 
