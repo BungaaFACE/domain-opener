@@ -70,14 +70,13 @@ stages:
         -A POSTROUTING -o $GATE_PUBLIC_INTERFACE -j MASQUERADE
         COMMIT
         EOF"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw enable"
 
 
 
 
 .ufw_reload: &ufw_reload
     - echo "RELOADING UFW"
-    - ssh $GATE_USER@$GATE_IP "echo 'sudo systemctl restart ufw && sudo ufw reload' | sudo at now;"
+    - timeout 3 ssh $GATE_USER@$GATE_IP "echo 'sudo systemctl restart ufw && sudo ufw reload' | sudo at now"
 
 
 .gate_ufw_open: &gate_ufw_open
@@ -138,6 +137,8 @@ initial_gate_setup_job:
   script:
     - *init_gate_setup
   after_script:
+    - timeout 3 ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo systemctl ufw enable --now"
+    - timeout 3 ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo ufw enable"
     - *ufw_reload
   allow_failure: false
   needs: []
