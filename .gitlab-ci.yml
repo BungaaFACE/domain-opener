@@ -93,7 +93,7 @@ stages:
 .gate_port_forwarding_enable: &gate_port_forwarding_enable
     - echo "ADDING FORWARDING RULES"
     - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i '/# FILTER FORWARDING RULES/a -A FORWARD -i $GATE_VPN_INTERFACE -s $NPM_VPN_IP -p tcp --dport $FORWARD_PORT -o $GATE_PUBLIC_INTERFACE -j ACCEPT' /etc/ufw/before.rules"
-    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i '/# NAT FORWARDING RULES/a -A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:FORWARD_PORT' /etc/ufw/before.rules"
+    - ssh $GATE_USER@$GATE_IP -p $GATE_PORT "sudo sed -i '/# NAT FORWARDING RULES/a -A PREROUTING -i $GATE_PUBLIC_INTERFACE -d $GATE_IP -p tcp --dport $FORWARD_PORT -j DNAT --to-destination $NPM_VPN_IP:$FORWARD_PORT' /etc/ufw/before.rules"
 
 .gate_port_forwarding_disable: &gate_port_forwarding_disable
     - echo "REMOVING FORWARDING RULES"
