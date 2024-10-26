@@ -11,7 +11,7 @@ variables:
 
   VPN_NETWORK: "10.0.0.0/24" # VPN NETWORK
 
-	# INITIAL SETUP VARIABLES
+  # INITIAL SETUP VARIABLES
   # Specify in variables:
   # GATE_IP - ip of vps with white ip and ufw
   # DOMAIN - domain to be routed
