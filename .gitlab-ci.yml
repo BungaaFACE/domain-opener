@@ -73,8 +73,7 @@ stages:
 
 .ufw_reload: &ufw_reload
     - echo "RELOADING UFW"
-    - ssh $GATE_USER@$GATE_IP "sudo systemctl restart ufw"
-    - ssh $GATE_USER@$GATE_IP "sudo ufw reload"
+    - ssh $GATE_USER@$GATE_IP "sudo nohup systemctl restart ufw && sudo ufw reload"
 
 
 .gate_ufw_open: &gate_ufw_open
